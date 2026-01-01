@@ -4,11 +4,11 @@
 
 #include "SFML/Graphics/PrimitiveType.hpp"
 #include "constraint.hpp"
+#include "input_handler.hpp"
 #include "particle.hpp"
 
 constexpr int WIDTH = 1080;
 constexpr int HEIGHT = 640;
-constexpr float PARTICLE_RADIUS = 10.0f;
 constexpr float GRAVITY = 9.81f;
 constexpr float TIME_STEP = 0.1f;
 
@@ -30,7 +30,8 @@ int main() {
         for (std::size_t col = 0; col < COL; ++col) {
             float x = col * REST_DISTANCE + WIDTH / 3.0;
             float y = row * REST_DISTANCE + HEIGHT / 3.0;
-            particles.emplace_back(x, y);
+            bool pinned = (row == 0);
+            particles.emplace_back(x, y, pinned);
         }
     }
 
@@ -59,6 +60,12 @@ int main() {
                     sf::Keyboard::Scancode::Escape)
                     window.close();
             }
+            else if (const auto* mouseButtonPressed =
+                         event->getIf<sf::Event::MouseButtonPressed>()) {
+                // Handle mouse clicks
+                InputHandler::handle_mouse_click(mouseButtonPressed,
+                                                 particles, constraints);
+            }
         }
 
         // Apply gravity and update particles
@@ -66,7 +73,7 @@ int main() {
         for (auto& particle : particles) {
             particle.apply_force(gravity_force);
             particle.update(TIME_STEP);
-            particle.constraint_to_bounds(WIDTH, HEIGHT, PARTICLE_RADIUS);
+            particle.constraint_to_bounds(WIDTH, HEIGHT);
         }
 
         // Apply constraints
@@ -76,6 +83,7 @@ int main() {
         // Clear the window with black color
         window.clear(sf::Color::Black);
 
+        /*
         // Draw particles as balls
         for (const auto& particle : particles) {
             sf::CircleShape circle(PARTICLE_RADIUS);
@@ -83,15 +91,21 @@ int main() {
             circle.setPosition(particle.position);
             window.draw(circle);
         }
+        */
+
+        // Draw particles as points
+        for (const auto& particle : particles) {
+            sf::Vertex point(particle.position, sf::Color::White);
+            window.draw(&point, 1, sf::PrimitiveType::Points);
+        }
 
         // Draw constraints as lines
-        sf::Vector2f relative{PARTICLE_RADIUS, PARTICLE_RADIUS};
         for (const auto& constraint : constraints) {
+            if (!constraint.is_active) continue;
+
             sf::Vertex line[] = {
-                sf::Vertex(constraint.p1->position + relative,
-                           sf::Color::White),
-                sf::Vertex(constraint.p2->position + relative,
-                           sf::Color::White)};
+                sf::Vertex(constraint.p1->position, sf::Color::White),
+                sf::Vertex(constraint.p2->position, sf::Color::White)};
 
             window.draw(line, 2, sf::PrimitiveType::Lines);
         }
