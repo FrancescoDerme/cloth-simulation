@@ -1,4 +1,5 @@
 #include <SFML/Graphics.hpp>
+#include <string>
 #include <vector>
 
 #include "constraint.hpp"
@@ -19,6 +20,22 @@ int main() {
     sf::RenderWindow window(sf::VideoMode(window_dimensions),
                             "Cloth simulation");
     window.setFramerateLimit(60);
+
+    // Load font
+    sf::Font font;
+    if (!font.openFromFile("../resources/arial-font/arial.ttf")) {
+        return -1;
+    }
+
+    // Setup FPS text
+    sf::Text fpsText(font);
+    fpsText.setCharacterSize(36);
+    fpsText.setPosition({10.0f, 10.0f});
+    fpsText.setFillColor(sf::Color::White);
+
+    sf::Clock clock;
+    float timer = 0.0f;
+    std::size_t frameCounter = 0;
 
     std::vector<Particle> particles;
     std::vector<Constraint> constraints;
@@ -78,6 +95,22 @@ int main() {
         for (std::size_t i = 0; i < 5; ++i)
             for (auto& constraint : constraints) constraint.satisfy();
 
+        // Calculate time
+        sf::Time elapsed = clock.restart();
+        float dt = elapsed.asSeconds();
+
+        timer += dt;
+        frameCounter++;
+
+        if (timer >= 0.5f) {
+            float fps = frameCounter / timer;
+            fpsText.setString("FPS: " +
+                              std::to_string(static_cast<int>(fps)));
+
+            timer = 0.0f;
+            frameCounter = 0;
+        }
+
         // Clear the window with black color
         window.clear(sf::Color::Black);
 
@@ -108,6 +141,7 @@ int main() {
             window.draw(line, 2, sf::PrimitiveType::Lines);
         }
 
+        window.draw(fpsText);
         window.display();
     }
 
