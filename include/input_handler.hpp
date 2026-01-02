@@ -4,28 +4,17 @@
 #include <SFML/Graphics.hpp>
 #include <vector>
 
-#include "SFML/Graphics/RenderWindow.hpp"
+#include "constants.hpp"
 #include "constraint.hpp"
 #include "math_utils.hpp"
 #include "particle.hpp"
 
-constexpr float CLICK_TOLERANCE = 5.0f;
-
 class InputHandler {
    public:
-    static void handle_mouse_click(
-        const sf::Event::MouseButtonPressed& event,
-        const sf::RenderWindow& window,
-        const std::vector<Particle>& particles,
-        std::vector<Constraint>& constraints) {
-        if (event.button == sf::Mouse::Button::Left) {
-            // Convert from pixel position to world coordinates
-            sf::Vector2f mouse_world =
-                window.mapPixelToCoords(event.position);
-
-            tear_cloth(mouse_world.x, mouse_world.y, particles,
-                       constraints);
-        }
+    static void handle_mouse_click(const sf::Vector2f& mousePos,
+                                   const std::vector<Particle>& particles,
+                                   std::vector<Constraint>& constraints) {
+        tear_cloth(mousePos.x, mousePos.y, particles, constraints);
     }
 
    private:

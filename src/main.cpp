@@ -1,20 +1,14 @@
 #include <SFML/Graphics.hpp>
+#include <iostream>
 #include <string>
 #include <vector>
 
+#include "SFML/System/Vector2.hpp"
+#include "constants.hpp"
 #include "constraint.hpp"
 #include "input_handler.hpp"
 #include "math_utils.hpp"
 #include "particle.hpp"
-
-constexpr int WIDTH = 1080;
-constexpr int HEIGHT = 640;
-constexpr float GRAVITY = 9.81f;
-constexpr float TIME_STEP = 0.1f;
-
-constexpr int ROW = 10;
-constexpr int COL = 10;
-constexpr float REST_DISTANCE = 30.0f;
 
 int main() {
     sf::Vector2u window_dimensions{WIDTH, HEIGHT};
@@ -66,6 +60,9 @@ int main() {
         }
     }
 
+    bool holding_left_click = false, first_frame_of_click = false;
+    sf::Vector2f lastMousePos, currentMousePos;
+
     while (window.isOpen()) {
         while (const std::optional event = window.pollEvent()) {
             if (event->is<sf::Event::Closed>())
@@ -78,9 +75,53 @@ int main() {
             }
             else if (const auto* mouseButtonPressed =
                          event->getIf<sf::Event::MouseButtonPressed>()) {
-                // Handle mouse clicks
-                InputHandler::handle_mouse_click(
-                    *mouseButtonPressed, window, particles, constraints);
+                if (mouseButtonPressed->button ==
+                    sf::Mouse::Button::Left) {
+                    holding_left_click = true;
+                    first_frame_of_click = true;
+                }
+            }
+            else if (const auto* mouseButtonReleased =
+                         event->getIf<sf::Event::MouseButtonReleased>()) {
+                if (mouseButtonReleased->button ==
+                    sf::Mouse::Button::Left) {
+                    holding_left_click = false;
+                }
+            }
+
+            if (holding_left_click) {
+                // Convert from pixel position to world coordinates
+                currentMousePos = window.mapPixelToCoords(
+                    sf::Mouse::getPosition(window));
+
+                if (first_frame_of_click) {
+                    InputHandler::handle_mouse_click(
+                        currentMousePos, particles, constraints);
+                    first_frame_of_click = false;
+                }
+                else {
+                    sf::Vector2f difference =
+                        currentMousePos - lastMousePos;
+                    float distance =
+                        std::sqrt(difference.x * difference.x +
+                                  difference.y * difference.y);
+
+                    if (distance > CLICK_TOLERANCE) {
+                        sf::Vector2f direction = difference / distance;
+
+                        for (float i = 0; i < distance; i += STEP_SIZE) {
+                            sf::Vector2f intermediatePos =
+                                lastMousePos + direction * i;
+                            InputHandler::handle_mouse_click(
+                                intermediatePos, particles, constraints);
+                        }
+                    }
+
+                    InputHandler::handle_mouse_click(
+                        currentMousePos, particles, constraints);
+                }
+
+                lastMousePos = currentMousePos;
             }
         }
 
