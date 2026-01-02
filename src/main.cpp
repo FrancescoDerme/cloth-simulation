@@ -33,6 +33,8 @@ int main() {
     std::size_t frameCounter = 0;
 
     std::vector<Particle> particles;
+    particles.reserve(ROW * COL);
+
     std::vector<Constraint> constraints;
 
     // Initialize particles
@@ -88,41 +90,39 @@ int main() {
                     holding_left_click = false;
                 }
             }
+        }
 
-            if (holding_left_click) {
-                // Convert from pixel position to world coordinates
-                currentMousePos = window.mapPixelToCoords(
-                    sf::Mouse::getPosition(window));
+        if (holding_left_click) {
+            // Convert from pixel position to world coordinates
+            currentMousePos =
+                window.mapPixelToCoords(sf::Mouse::getPosition(window));
 
-                if (first_frame_of_click) {
-                    InputHandler::handle_mouse_click(
-                        currentMousePos, particles, constraints);
-                    first_frame_of_click = false;
-                }
-                else {
-                    sf::Vector2f difference =
-                        currentMousePos - lastMousePos;
-                    float distance =
-                        std::sqrt(difference.x * difference.x +
-                                  difference.y * difference.y);
-
-                    if (distance > CLICK_TOLERANCE) {
-                        sf::Vector2f direction = difference / distance;
-
-                        for (float i = 0; i < distance; i += STEP_SIZE) {
-                            sf::Vector2f intermediatePos =
-                                lastMousePos + direction * i;
-                            InputHandler::handle_mouse_click(
-                                intermediatePos, particles, constraints);
-                        }
-                    }
-
-                    InputHandler::handle_mouse_click(
-                        currentMousePos, particles, constraints);
-                }
-
-                lastMousePos = currentMousePos;
+            if (first_frame_of_click) {
+                InputHandler::handle_mouse_click(currentMousePos,
+                                                 particles, constraints);
+                first_frame_of_click = false;
             }
+            else {
+                sf::Vector2f difference = currentMousePos - lastMousePos;
+                float distance = std::sqrt(difference.x * difference.x +
+                                           difference.y * difference.y);
+
+                if (distance > CLICK_TOLERANCE) {
+                    sf::Vector2f direction = difference / distance;
+
+                    for (float i = 0; i < distance; i += STEP_SIZE) {
+                        sf::Vector2f intermediatePos =
+                            lastMousePos + direction * i;
+                        InputHandler::handle_mouse_click(
+                            intermediatePos, particles, constraints);
+                    }
+                }
+
+                InputHandler::handle_mouse_click(currentMousePos,
+                                                 particles, constraints);
+            }
+
+            lastMousePos = currentMousePos;
         }
 
         // Apply gravity and update particles
@@ -153,40 +153,36 @@ int main() {
             frameCounter = 0;
         }
 
+        // Rendering
         // Clear the window with black color
         window.clear(sf::Color::Black);
 
-        /*
-        // Draw particles as balls
-        for (const auto& particle : particles) {
-            sf::CircleShape circle(PARTICLE_RADIUS);
-            circle.setFillColor(sf::Color::White);
-            circle.setPosition(particle.position);
-            window.draw(circle);
-        }
-        */
-
         // Draw particles as points
+        sf::VertexArray particlePoints(sf::PrimitiveType::Points);
         for (const auto& particle : particles) {
-            sf::Vertex point(particle.position, sf::Color::White);
-            window.draw(&point, 1, sf::PrimitiveType::Points);
+            particlePoints.append(
+                sf::Vertex(particle.position, sf::Color::White));
         }
+
+        window.draw(particlePoints);
 
         // Draw constraints as lines
+        sf::VertexArray constraintLines(sf::PrimitiveType::Lines);
         for (const auto& constraint : constraints) {
             if (!constraint.is_active) continue;
 
+            // Calculate strain color
             float t = 35.0f * std::abs(constraint.compute_strain());
             sf::Color strain_color = math_utils::lerpColor(
                 sf::Color::White, sf::Color::Red, t);
 
-            sf::Vertex line[] = {
-                sf::Vertex(constraint.p1->position, strain_color),
-                sf::Vertex(constraint.p2->position, strain_color)};
-
-            window.draw(line, 2, sf::PrimitiveType::Lines);
+            constraintLines.append(
+                sf::Vertex(constraint.p1->position, strain_color));
+            constraintLines.append(
+                sf::Vertex(constraint.p2->position, strain_color));
         }
 
+        window.draw(constraintLines);
         window.draw(fpsText);
         window.display();
     }
